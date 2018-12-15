@@ -46,13 +46,20 @@ exp_to_c = function
 	| Num (str) -> str
 	| True -> "\'\\1\'"
 	| False -> "\'\\0\'"
+	| ArrayAccess (name, type_array_access) -> name ^ (type_array_access_to_c type_array_access)
+	| StrLiteral (str_literal) -> str_literal
 and
 func_call_to_c = function
 	| FuncCall (name, exp_list) -> name ^ "(" ^ (exp_list_to_c exp_list) ^ ")"
+and
+type_array_access_to_c = function
+	| EpsTArrAccess -> ""
+	| TypeArrayAccess (exp, type_array_access) -> "[" ^ (exp_to_c exp) ^ "]" ^ (type_array_access_to_c type_array_access);;
 ;;
 
 let var_decl_to_c = function
-	| VarDecl (name, language_type) -> (language_type_to_c language_type) ^ " " ^ name
+	| VarDecl (name, Type(type_basic, EpsTArr)) -> (type_basic_to_c type_basic) ^ " " ^ name
+	| VarDecl (name, Type(type_basic, type_array)) -> (type_basic_to_c type_basic) ^ " " ^ name ^ (type_array_to_c type_array)
 ;;
 
 let var_def_to_c = function
@@ -63,7 +70,7 @@ let rec local_statement_to_c t lvl = match t with
 	| LocalVarDecl (var_decl) -> (indent lvl) ^ (var_decl_to_c var_decl) ^ ";"
 	| LocalVarDef (var_def) -> (indent lvl) ^ (var_def_to_c var_def) ^ ";"
 	| LocalExp(local_exp) -> (indent lvl) ^ (exp_to_c local_exp) ^ ";"
-	| For (var_decl, init, cond, post_action, body) -> (indent lvl) ^ "for (" ^ (var_decl_to_c var_decl) ^ " = " ^ (exp_to_c init) ^ "; " ^
+	| For (var_def, cond, post_action, body) -> (indent lvl) ^ "for (" ^ (var_def_to_c var_def) ^ "; " ^
 														(exp_to_c cond) ^ "; " ^ (exp_to_c post_action) ^ ") {\n" ^ (body_to_c body (lvl + 1)) ^ (indent lvl) ^ "}"
 	| While (cond, body) -> (indent lvl) ^ "while (" ^ (exp_to_c cond) ^ ") {\n" ^ (body_to_c body (lvl+1)) ^ (indent lvl) ^ "}"
 	| If (cond, body, if_cont) -> (indent lvl) ^ "if (" ^ (exp_to_c cond) ^ ") {\n" ^ (body_to_c body (lvl+1)) ^ (indent lvl) ^ "}" ^ (if_cont_to_c if_cont lvl)
@@ -88,7 +95,6 @@ let rec global_statement_to_c = function
     | GlobalFuncCall (func_call) -> (func_call_to_c func_call) ^ ";"
 ;;
 
-(* (decls, defs, funcs, funcCalls) *)
 let rec collect_globals t (decls, defs, funs, fun_calls) = match t with
 	| Eps -> (List.rev decls, List.rev defs, List.rev funs, List.rev fun_calls)
 	| GlobalStatementsList (global_statement, tree) -> let s = (global_statement_to_c global_statement) in

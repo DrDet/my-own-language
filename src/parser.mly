@@ -4,6 +4,7 @@
 
 %token <string> STR_NAME
 %token <string> NUM
+%token <string> STR_LITERAL
 %token TRUE
 %token FALSE
 
@@ -32,17 +33,17 @@ main:
     Code EOF        { $1 }
 
 Code:
-    GlobalStatement Code          { Printf.printf "Code1\n"; GlobalStatementsList($1, $2) }
-    |                             { Printf.printf "Code2\n"; Eps }
+    GlobalStatement Code          { GlobalStatementsList($1, $2) }
+    |                             { Eps }
 
 GlobalStatement:
-    VarDecl SEMICOLON        { Printf.printf "gl_st 1\n" ; GlobalVarDecl($1) }
+    VarDecl SEMICOLON        { GlobalVarDecl($1) }
     | VarDef SEMICOLON       { GlobalVarDef($1) }
     | Function               { $1 }
     | FuncCall SEMICOLON     { GlobalFuncCall($1) }
 
 VarDecl:
-	STR_NAME COLON Type      { Printf.printf "vardecl1\n"; VarDecl($1, $3) }
+	STR_NAME COLON Type      { VarDecl($1, $3) }
 
 VarDef:
     STR_NAME COLON Type ASSIGN Exp  { VarDef($1, $3, $5) }
@@ -74,9 +75,9 @@ LocalStatement:
     | RET SEMICOLON                { RetEmpty }
 
 Exp:
-    STR_NAME ASSIGN S	         { BinaryOp("=", Str_name($1), $3) }
-    | STR_NAME PLUS_ASSIGN S	 { BinaryOp("+=", Str_name($1), $3) }
-    | STR_NAME MINUS_ASSIGN S	 { BinaryOp("-=", Str_name($1), $3) }
+    Exp ASSIGN S	         { BinaryOp("=", $1, $3) }
+    | Exp PLUS_ASSIGN S	     { BinaryOp("+=", $1, $3) }
+    | Exp MINUS_ASSIGN S	 { BinaryOp("-=", $1, $3) }
     | S                          { $1 }
 
 S:
@@ -123,26 +124,28 @@ L:
     | TRUE	                                   { True }
     | FALSE	                                   { False }
     | FuncCall                                 { ExpFuncCall($1) }
+    | STR_NAME TypeArrayAccess                 { ArrayAccess($1, $2) }
+    | STR_LITERAL                              { StrLiteral($1) }
 
 FuncCall:
-    STR_NAME ROUND_BR_OPEN ExpList ROUND_BR_CLOSE       { Printf.printf "FuncCall1\n"; FuncCall($1, $3) }
+    STR_NAME ROUND_BR_OPEN ExpList ROUND_BR_CLOSE       { FuncCall($1, $3) }
 
 ExpList:
-    Exp ExpListCont	 { Printf.printf "ExpList1\n";ExpList($1, $2) }
-    |                { Printf.printf "NilExpList\n";NilExpList }
+    Exp ExpListCont	 { ExpList($1, $2) }
+    |                { NilExpList }
 
 ExpListCont:
-    COMMA Exp ExpListCont	 { Printf.printf "ExpListCont1\n";ExpList($2, $3) }
-    |                        { Printf.printf "ExpList\n";NilExpList }
+    COMMA Exp ExpListCont	 { ExpList($2, $3) }
+    |                        { NilExpList }
 
 Cycle:
     For 	     { $1 }
     | While      { $1 }
 
 For:
-    FOR ROUND_BR_OPEN VarDecl ASSIGN Exp SEMICOLON
+    FOR ROUND_BR_OPEN VarDef SEMICOLON
     Exp SEMICOLON Exp ROUND_BR_CLOSE
-    CURLY_BR_OPEN Body CURLY_BR_CLOSE                { For( $3, $5, $7, $9, $12) }
+    CURLY_BR_OPEN Body CURLY_BR_CLOSE                { For($3, $5, $7, $10) }
 
 While:
     WHILE ROUND_BR_OPEN Exp ROUND_BR_CLOSE CURLY_BR_OPEN Body CURLY_BR_CLOSE     { While($3, $6) }
@@ -156,19 +159,30 @@ IfCont:
     |                                                                                    { EpsIfCont }
 
 Type:
-    TypeBasic TypeArray     { Printf.printf "type1\n"; Type($1, $2) }
+    TypeBasic TypeArray     { Type($1, $2) }
+    | TypeBasic             { Type($1, EpsTArr) }
 
 TypeBasic:
-    INT	     { Printf.printf "type_basic1\n"; Int }
+    INT	     { Int }
     | LONG	 { Long }
     | FLOAT	 { Float }
     | BOOL	 { Bool }
-    | STRING  { String }
+    | STRING { String }
 
 TypeArray:
-    SQUARE_BR_OPEN NUM SQUARE_BR_CLOSE TypeArray	 { TypeArray($2, $4) }
-    |                                                { Printf.printf "type_array2\n"; EpsTArr }
+    SQUARE_BR_OPEN NUM SQUARE_BR_CLOSE TypeArrayCont    { TypeArray($2, $4) }
+
+TypeArrayCont:
+    SQUARE_BR_OPEN NUM SQUARE_BR_CLOSE TypeArrayCont    { TypeArray($2, $4) }
+    |                                                   { EpsTArr }
 
 TypeReturn:
     TypeBasic	 { Type($1, EpsTArr) }
     | VOID       { Type(Void, EpsTArr) }
+
+TypeArrayAccess:
+    SQUARE_BR_OPEN Exp SQUARE_BR_CLOSE TypeArrayAccessCont    { TypeArrayAccess($2, $4) }
+
+TypeArrayAccessCont:
+    SQUARE_BR_OPEN Exp SQUARE_BR_CLOSE TypeArrayAccessCont    { TypeArrayAccess($2, $4) }
+    |                                                         { EpsTArrAccess }

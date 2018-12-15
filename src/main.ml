@@ -18,12 +18,16 @@ let rec read_in_string ic buf =
 		contents buf
 ;;
 
-let (ic, oc) = (open_in "input.q", open_out "output.c");;
+let (ic, oc) = (open_in "sample.q", open_out "output.c");;
 
 let s = read_in_string ic (Buffer.create 2000000) in
 let t = string_to_tree s in
 let (decls, defs, funs, fun_calls) = collect_globals t ([], [], [], []) in
+fprintf oc "#include <stdio.h>\n#include <stdlib.h>\n\n";
 List.iter (fun s -> fprintf oc "%s\n" s) decls;
+List.iter (fun s -> let end_idx = Str.search_forward (Str.regexp_string " {") s 0 in
+					let s' = Str.string_before s end_idx in
+					fprintf oc "%s;\n" s') funs;
 List.iter (fun s -> fprintf oc "%s\n" s) defs;
 List.iter (fun s -> fprintf oc "%s\n" s) funs;
 fprintf oc "\nint main() {\n";

@@ -1,6 +1,6 @@
 .PHONY: all run clean
 GENERATED=src/parser.mli src/parser.ml src/lexer.ml
-OCAMLC=ocamlopt
+OCAMLC=ocamlc str.cma
 
 ifeq ($(OS),Windows_NT)
 	DEL=del /f
@@ -28,4 +28,9 @@ $(GENERATED): src/lexer.mll src/parser.mly
 
 clean:
 	cd src && $(DEL) $(GENERATED:src/%=%) *.c* *.o*
-	$(DEL) main.exe
+	$(DEL) main.exe a.out output.c
+
+exec-gen: all
+	./main.exe
+	gcc output.c
+	./a.out
