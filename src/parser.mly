@@ -24,30 +24,28 @@
 
 %token EOF
 
-%right ASSIGN PLUS_ASSIGN MINUS_ASSIGN
-%left OR
-%left AND
-%left EQ NON_EQ
-%left LOWER_EQ LOWER GREATER GREATER_EQ
-%left PLUS MINUS
-%left MUL DIVIDE MOD
-%nonassoc NOT
-
 %start main
 %type <Tree.tree> main
 %%
 
 main:
-    main GlobalStatement     { GlobalStatementsList($2, $1) }
-    |                        { Eps }
+    Code EOF        { $1 }
+
+Code:
+    GlobalStatement Code          { Printf.printf "Code1\n"; GlobalStatementsList($1, $2) }
+    |                             { Printf.printf "Code2\n"; Eps }
 
 GlobalStatement:
-    VarDecl SEMICOLON        { GlobalVarDecl($1) }
+    VarDecl SEMICOLON        { Printf.printf "gl_st 1\n" ; GlobalVarDecl($1) }
+    | VarDef SEMICOLON       { GlobalVarDef($1) }
     | Function               { $1 }
-    | FuncCall SEMICOLON     { GlobFuncCall($1) }
+    | FuncCall SEMICOLON     { GlobalFuncCall($1) }
 
 VarDecl:
-	STR_NAME COLON Type      { VarDecl($1, $3) }
+	STR_NAME COLON Type      { Printf.printf "vardecl1\n"; VarDecl($1, $3) }
+
+VarDef:
+    STR_NAME COLON Type ASSIGN Exp  { VarDef($1, $3, $5) }
 
 Function:
 	FUN STR_NAME ROUND_BR_OPEN FunctionArgs ROUND_BR_CLOSE
@@ -56,23 +54,24 @@ Function:
 
 FunctionArgs:
 	STR_NAME COLON Type FunctionArgsCont     { ArgList(Arg($1, $3), $4) }
-    |                                        { Nil }
+    |                                        { NilArgList }
 
 FunctionArgsCont:
 	COMMA STR_NAME COLON Type FunctionArgsCont  { ArgList(Arg($2, $4), $5) }
-    |                                           { Nil }
+    |                                           { NilArgList }
 
 Body:
-	Body LocalStatement      { LocalStatementsList($2, $1) }
-    |                        { Eps }
+	LocalStatement Body      { LocalStatementsList($1, $2) }
+    |                        { EpsBody }
 
 LocalStatement:
 	VarDecl SEMICOLON              { LocalVarDecl($1) }
+    | VarDef SEMICOLON              { LocalVarDef($1) }
     | Cycle                        { $1 }
     | If                           { $1 }
+    | Exp SEMICOLON                { LocalExp($1) }
     | RET Exp SEMICOLON            { Ret($2) }
     | RET SEMICOLON                { RetEmpty }
-
 
 Exp:
     STR_NAME ASSIGN S	         { BinaryOp("=", Str_name($1), $3) }
@@ -81,11 +80,11 @@ Exp:
     | S                          { $1 }
 
 S:
-    S OR D	 { BinaryOp("or", $1, $3) }
+    S OR D	 { BinaryOp("||", $1, $3) }
     | D      { $1 }
 
 D:
-    D AND F	 { BinaryOp("and", $1, $3) }
+    D AND F	 { BinaryOp("&&", $1, $3) }
     | F      { $1 }
 
 F:
@@ -108,13 +107,13 @@ H:
 J:
     J MUL K	         { BinaryOp("*", $1, $3) }
     | J DIV K	     { BinaryOp("/", $1, $3) }
-    | J MOD K	     { BinaryOp("mod", $1, $3) }
+    | J MOD K	     { BinaryOp("%", $1, $3) }
     | K              { $1 }
 
 K:
     PLUS L	         { UnaryOp("+", $2) }
     | MINUS L	     { UnaryOp("-", $2) }
-    | NOT L          { UnaryOp("not", $2) }
+    | NOT L          { UnaryOp("!", $2) }
     | L              { $1 }
 
 L:
@@ -126,15 +125,15 @@ L:
     | FuncCall                                 { ExpFuncCall($1) }
 
 FuncCall:
-    STR_NAME ROUND_BR_OPEN ExpList ROUND_BR_CLOSE       { FuncCall($1, $3) }
+    STR_NAME ROUND_BR_OPEN ExpList ROUND_BR_CLOSE       { Printf.printf "FuncCall1\n"; FuncCall($1, $3) }
 
 ExpList:
-    Exp ExpListCont	 { ExpList($1, $2) }
-    |                { Nil }
+    Exp ExpListCont	 { Printf.printf "ExpList1\n";ExpList($1, $2) }
+    |                { Printf.printf "NilExpList\n";NilExpList }
 
 ExpListCont:
-    COMMA Exp ExpListCont	 { ExpList($2, $3) }
-    |                        { Nil }
+    COMMA Exp ExpListCont	 { Printf.printf "ExpListCont1\n";ExpList($2, $3) }
+    |                        { Printf.printf "ExpList\n";NilExpList }
 
 Cycle:
     For 	     { $1 }
@@ -154,13 +153,13 @@ If:
 IfCont:
     ELSE_IF ROUND_BR_OPEN Exp ROUND_BR_CLOSE CURLY_BR_OPEN Body CURLY_BR_CLOSE IfCont	 { ElseIf($3, $6, $8) }
     | ELSE CURLY_BR_OPEN Body CURLY_BR_CLOSE                                             { Else($3) }
-    |                                                                                    { Eps }
+    |                                                                                    { EpsIfCont }
 
 Type:
-    TypeBasic TypeArray     { Type($1, $2) }
+    TypeBasic TypeArray     { Printf.printf "type1\n"; Type($1, $2) }
 
 TypeBasic:
-    INT	     { Int }
+    INT	     { Printf.printf "type_basic1\n"; Int }
     | LONG	 { Long }
     | FLOAT	 { Float }
     | BOOL	 { Bool }
@@ -168,8 +167,8 @@ TypeBasic:
 
 TypeArray:
     SQUARE_BR_OPEN NUM SQUARE_BR_CLOSE TypeArray	 { TypeArray($2, $4) }
-    |                                                { Eps }
+    |                                                { Printf.printf "type_array2\n"; EpsTArr }
 
 TypeReturn:
-    TypeBasic	 { Type($1, Eps) }
-    | VOID       { Type(Void, Eps) }
+    TypeBasic	 { Type($1, EpsTArr) }
+    | VOID       { Type(Void, EpsTArr) }

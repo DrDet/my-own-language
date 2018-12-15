@@ -24,7 +24,7 @@ main.exe: $(GENERATED) src/tree.cmi src/translation.cmi
 
 $(GENERATED): src/lexer.mll src/parser.mly
 	ocamllex src/lexer.mll
-	ocamlyacc -v src/parser.mly
+	menhir -v src/parser.mly
 
 clean:
 	cd src && $(DEL) $(GENERATED:src/%=%) *.c* *.o*
