@@ -35,6 +35,7 @@ type local_statement =
 | If of exp * body * if_cont
 | Ret of exp
 | RetEmpty
+| CSAssignment of exp_list * exp_list
 and
 body = EpsBody | LocalStatementsList of local_statement * body
 and

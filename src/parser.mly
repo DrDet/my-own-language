@@ -73,6 +73,22 @@ LocalStatement:
     | Exp SEMICOLON                { LocalExp($1) }
     | RET Exp SEMICOLON            { Ret($2) }
     | RET SEMICOLON                { RetEmpty }
+    | CSAssignment SEMICOLON       { $1 }
+
+CSAssignment:
+    | AtomList ASSIGN ExpList      { CSAssignment($1, $3) }
+
+AtomList:
+    Atom COMMA Atom AtomListCont    { ExpList($1, ExpList($3, $4)) }
+
+AtomListCont:
+    COMMA Atom AtomListCont          { ExpList($2, $3) }
+    |                                { NilExpList }
+
+Atom:
+    STR_NAME                    { Str_name($1) }
+    | STR_NAME TypeArrayAccess  { ArrayAccess($1, $2) }
+
 
 Exp:
     Exp ASSIGN S	         { BinaryOp("=", $1, $3) }

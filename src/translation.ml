@@ -66,6 +66,22 @@ let var_def_to_c = function
 	| VarDef (name, language_type, exp) -> (language_type_to_c language_type) ^ " " ^ name ^ " = " ^ (exp_to_c exp)
 ;;
 
+let prepare_cs_to_c rhs =
+    let rec impl_rec l idx =
+    match l with
+        | NilExpList -> ""
+        | ExpList(exp, rest) -> "__buf" ^ (string_of_int idx) ^ " = " ^ (exp_to_c exp) ^ "; " ^ (impl_rec rest (idx + 1))
+    in impl_rec rhs 0
+;;
+
+let assign_cs_to_c lhs =
+    let rec impl_rec l idx =
+    match l with
+        | NilExpList -> ""
+        | ExpList(exp, rest) -> (exp_to_c exp) ^ " = __buf" ^ (string_of_int idx) ^ "; " ^ (impl_rec rest (idx + 1))
+    in impl_rec lhs 0
+;;
+
 let rec local_statement_to_c t lvl = match t with
 	| LocalVarDecl (var_decl) -> (indent lvl) ^ (var_decl_to_c var_decl) ^ ";"
 	| LocalVarDef (var_def) -> (indent lvl) ^ (var_def_to_c var_def) ^ ";"
@@ -76,6 +92,7 @@ let rec local_statement_to_c t lvl = match t with
 	| If (cond, body, if_cont) -> (indent lvl) ^ "if (" ^ (exp_to_c cond) ^ ") {\n" ^ (body_to_c body (lvl+1)) ^ (indent lvl) ^ "}" ^ (if_cont_to_c if_cont lvl)
 	| Ret (exp) -> (indent lvl) ^ "return " ^ (exp_to_c exp) ^ ";"
 	| RetEmpty -> (indent lvl) ^ "return;"
+    | CSAssignment (lhs, rhs) -> (indent lvl) ^ (prepare_cs_to_c rhs) ^ "\n" ^ (indent lvl) ^ (assign_cs_to_c lhs)
 and
 if_cont_to_c t lvl = match t with
 	| EpsIfCont -> ""
